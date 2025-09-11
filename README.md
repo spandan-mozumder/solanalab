@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SolanaLab - Solana dApp
 
-## Getting Started
+A comprehensive Solana decentralized application built with Next.js, featuring wallet integration, SOL operations, and SPL token management.
 
-First, run the development server:
+## Features
 
+### 🔗 Wallet Integration
+- Connect with Phantom, Solflare, and other Solana wallets
+- Real-time balance display
+- Devnet support for testing
+
+### 💰 SOL Operations
+- **Balance Display**: View your current SOL balance in real-time
+- **Airdrop**: Request devnet SOL for testing
+- **Transfer**: Send SOL to other addresses
+
+### 🪙 Token Management
+- **Create Token**: Mint new SPL tokens with metadata stored on IPFS via Pinata
+- **Burn Token**: Burn SPL tokens and close token accounts
+
+## Setup
+
+### 1. Install Dependencies
 ```bash
-npm run dev
+bun install
 # or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Configuration
+Copy the example environment file and configure Pinata settings:
+```bash
+cp .env.example .env.local
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Add your Pinata JWT token to `.env.local`:
+```env
+PINATA_JWT=your_pinata_jwt_token_here
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Run the Development Server
+```bash
+bun dev
+# or
+npm run dev
+```
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
