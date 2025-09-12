@@ -120,8 +120,6 @@
     @apply bg-background text-foreground;
   }
 }
-
-/* Custom spacing utilities */
 .px-30 {
   padding-left: 7.5rem;
   padding-right: 7.5rem;

@@ -1,7 +1,7 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   /* config options here */
 };
-
-export default nextConfig;
+var stdin_default = nextConfig;
+export {
+  stdin_default as default
+};

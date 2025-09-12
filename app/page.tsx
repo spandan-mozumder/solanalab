@@ -1,13 +1,11 @@
 import Airdrop from "@/components/Airdrop";
 import Transfer from "@/components/Transfer";
-import CreateToken from "@/components/CreateToken";
 import BurnToken from "@/components/BurnToken";
+import CloseTokenAccount from "@/components/CloseTokenAccount";
 import BalanceCard from "@/components/BalanceCard";
-import React from "react";
-
+import { CreateToken } from "@/components/CreateToken";
 const HomePage = () => {
-  return (
-    <main className="w-full flex gap-5 md:flex-row sm:flex-col px-10 lg:px-30 py-8">
+  return <main className="w-full flex gap-5 md:flex-row flex-col px-10 lg:px-30 py-8">
       <div className="flex flex-col gap-5 flex-1">
         <BalanceCard />
         <Airdrop />
@@ -15,11 +13,12 @@ const HomePage = () => {
       </div>
       <div className="flex flex-col gap-5 flex-1">
         <CreateToken />
-        <BurnToken /> 
-      </div>
-       
-    </main>
-  );
+        <BurnToken />
+        <CloseTokenAccount />
+      </div>    
+      </main>;
 };
-
-export default HomePage;
+var stdin_default = HomePage;
+export {
+  stdin_default as default
+};

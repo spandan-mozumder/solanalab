@@ -1,29 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
-
-export async function POST(request: NextRequest) {
+import { NextResponse } from "next/server";
+import axios from "axios";
+async function POST(request) {
   try {
     const metadata = await request.json();
-
-    const response = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.PINATA_JWT}`,
-      },
-      body: JSON.stringify({
-        pinataContent: metadata,
-        pinataMetadata: {
-          name: `${metadata.name}_metadata.json`,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to upload metadata to Pinata");
+    const headers = { "Content-Type": "application/json" };
+    if (process.env.PINATA_JWT) {
+      headers["Authorization"] = `Bearer ${process.env.PINATA_JWT}`;
+    } else if (process.env.PINATA_API_KEY && process.env.PINATA_SECRET_API_KEY) {
+      headers["pinata_api_key"] = process.env.PINATA_API_KEY;
+      headers["pinata_secret_api_key"] = process.env.PINATA_SECRET_API_KEY;
     }
-
-    const data = await response.json();
-    return NextResponse.json(data);
+    const body = {
+      pinataContent: metadata,
+      pinataMetadata: {
+        name: `${metadata.name}_metadata.json`
+      }
+    };
+    const resp = await axios.post(
+      "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+      body,
+      { headers }
+    );
+    return NextResponse.json(resp.data);
   } catch (error) {
     console.error("Pinata metadata upload error:", error);
     return NextResponse.json(
@@ -32,3 +30,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+export {
+  POST
+};

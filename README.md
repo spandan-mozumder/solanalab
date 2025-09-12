@@ -18,6 +18,24 @@ A comprehensive Solana decentralized application built with Next.js, featuring w
 - **Create Token**: Mint new SPL tokens with metadata stored on IPFS via Pinata
 - **Burn Token**: Burn SPL tokens and close token accounts
 
+### 📋 Token Metadata Display
+
+**Important**: After creating a token, it will appear in your wallet but may not show the name, symbol, or image initially. This is because Solana tokens require on-chain metadata to display properly in wallets and block explorers.
+
+The app will automatically show instructions for adding metadata using:
+
+#### Option 1: Metaplex CLI
+```bash
+# Install the CLI
+npm install -g @metaplex-foundation/js-cli
+
+# Create metadata (the app provides the exact command)
+metaplex create-metadata --mint YOUR_MINT_ADDRESS --uri YOUR_METADATA_URI
+```
+
+#### Option 2: Metaplex Studio
+Visit [metaplex.com](https://www.metaplex.com/) to create metadata through their web interface.
+
 ## Setup
 
 ### 1. Install Dependencies

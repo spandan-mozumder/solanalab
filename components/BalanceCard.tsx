@@ -1,5 +1,4 @@
 "use client";
-
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useEffect, useState } from "react";
@@ -35,18 +34,22 @@ const BalanceCard = () => {
   }, [connection, publicKey]);
 
   return (
-    <Card className="w-full bg-secondary text-center">
-      <CardHeader>
-        <CardTitle>Wallet Balance</CardTitle>
-        <CardDescription>Current SOL balance on devnet</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold">
-          {balance !== null ? `${balance.toFixed(6)} SOL` : "Not connected"}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="mx-auto max-w-2xl p-4">
+      <Card className="bg-secondary text-center">
+        <CardHeader className="">
+          <CardTitle className="">Wallet Balance</CardTitle>
+          <CardDescription className="">Current SOL balance on devnet</CardDescription>
+        </CardHeader>
+        <CardContent className="">
+          <div className="text-3xl font-bold">
+            {balance !== null ? `${balance.toFixed(6)} SOL` : "Not connected"}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
-
-export default BalanceCard;
+var stdin_default = BalanceCard;
+export {
+  stdin_default as default
+};

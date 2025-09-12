@@ -1,13 +1,9 @@
 "use client";
-
-import React from "react";
 import Image from "next/image";
 import { ModeToggle } from "@/components/ModeToggle";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-
-export default function Header() {
-  return (
-    <header className="w-full py-4 px-10 lg:px-30 border-b border-transparent/10 backdrop-blur-sm">
+function Header() {
+  return <header className="w-full py-4 px-10 lg:px-30 border-b border-transparent/10 backdrop-blur-sm">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center bg-white/5">
@@ -24,6 +20,8 @@ export default function Header() {
           <WalletMultiButton />
         </div>
       </div>
-    </header>
-  );
+    </header>;
 }
+export {
+  Header as default
+};
