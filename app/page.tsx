@@ -6,7 +6,8 @@ import BalanceCard from "@/components/BalanceCard";
 import { CreateToken } from "@/components/CreateToken";
 
 const HomePage = () => {
-  return <main className="w-full flex md:flex-row flex-col px-10 lg:px-30 py-8">
+  return (
+    <main className="w-full flex md:flex-row flex-col px-10 lg:px-30 py-8">
       <div className="flex flex-col flex-1">
         <BalanceCard />
         <Airdrop />
@@ -16,10 +17,9 @@ const HomePage = () => {
         <CreateToken />
         <BurnToken />
         <CloseTokenAccount />
-      </div>    
-      </main>;
+      </div>
+    </main>
+  );
 };
 var stdin_default = HomePage;
-export {
-  stdin_default as default
-};
+export { stdin_default as default };

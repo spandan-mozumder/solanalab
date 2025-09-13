@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
@@ -25,7 +25,13 @@ import { toast } from "react-hot-toast";
 import { ClipLoader } from "react-spinners";
 import { PinataSDK } from "pinata-web3";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,7 +69,7 @@ export const CreateToken: FC = () => {
 
     setIsLoading(true);
     const toastId = toast.loading("Uploading metadata to IPFS...");
-    
+
     let metadataUri = "";
     try {
       const pinata = new PinataSDK({
@@ -99,10 +105,10 @@ export const CreateToken: FC = () => {
       toast.loading("Creating token on Solana...", { id: toastId });
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
-      
+
       const associatedTokenAccount = await getAssociatedTokenAddress(
         mintKeypair.publicKey,
-        publicKey
+        publicKey,
       );
 
       const tx = new Transaction().add(
@@ -118,7 +124,7 @@ export const CreateToken: FC = () => {
           tokenDecimals,
           publicKey,
           publicKey,
-          TOKEN_PROGRAM_ID
+          TOKEN_PROGRAM_ID,
         ),
         createCreateMetadataAccountV3Instruction(
           {
@@ -128,7 +134,7 @@ export const CreateToken: FC = () => {
                 METADATA_PROGRAM_ID.toBuffer(),
                 mintKeypair.publicKey.toBuffer(),
               ],
-              METADATA_PROGRAM_ID
+              METADATA_PROGRAM_ID,
             )[0],
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
@@ -149,37 +155,41 @@ export const CreateToken: FC = () => {
               isMutable: false,
               collectionDetails: null,
             },
-          }
+          },
         ),
         createAssociatedTokenAccountInstruction(
-            publicKey,
-            associatedTokenAccount,
-            publicKey,
-            mintKeypair.publicKey
+          publicKey,
+          associatedTokenAccount,
+          publicKey,
+          mintKeypair.publicKey,
         ),
         createMintToInstruction(
-            mintKeypair.publicKey,
-            associatedTokenAccount,
-            publicKey,
-            tokenAmount * Math.pow(10, tokenDecimals)
-        )
+          mintKeypair.publicKey,
+          associatedTokenAccount,
+          publicKey,
+          tokenAmount * Math.pow(10, tokenDecimals),
+        ),
       );
 
       const signature = await sendTransaction(tx, connection, {
         signers: [mintKeypair],
       });
-      
+
       const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
-      
+
       toast.success(
-        <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="underline">
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
           Token created! View on Explorer
         </a>,
-        { id: toastId, duration: 8000 }
+        { id: toastId, duration: 8000 },
       );
-      
-      setTokenMintAddress(mintKeypair.publicKey.toString());
 
+      setTokenMintAddress(mintKeypair.publicKey.toString());
     } catch (error: any) {
       toast.error(`Token creation failed: ${error.message}`, { id: toastId });
     } finally {
@@ -204,7 +214,7 @@ export const CreateToken: FC = () => {
           <ClipLoader color="white" size={50} />
         </div>
       )}
-      
+
       {!tokenMintAddress ? (
         <Card className="">
           <CardHeader className="">
@@ -213,42 +223,56 @@ export const CreateToken: FC = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tokenName" className="">Token Name*</Label>
+                <Label htmlFor="tokenName" className="">
+                  Token Name*
+                </Label>
                 <Input
                   id="tokenName"
                   type="text"
                   className=""
                   placeholder="My Awesome Token"
                   value={tokenName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTokenName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setTokenName(e.target.value)
+                  }
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="tokenSymbol" className="">Symbol*</Label>
+                <Label htmlFor="tokenSymbol" className="">
+                  Symbol*
+                </Label>
                 <Input
                   id="tokenSymbol"
                   type="text"
                   className=""
                   placeholder="AWESOME"
                   value={tokenSymbol}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTokenSymbol(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setTokenSymbol(e.target.value)
+                  }
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="tokenDescription" className="">Description</Label>
+                <Label htmlFor="tokenDescription" className="">
+                  Description
+                </Label>
                 <Textarea
                   id="tokenDescription"
                   className=""
                   placeholder="A token for my community!"
                   value={tokenDescription}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTokenDescription(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setTokenDescription(e.target.value)
+                  }
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="imageFile" className="">Image*</Label>
+                <Label htmlFor="imageFile" className="">
+                  Image*
+                </Label>
                 <Input
                   id="imageFile"
                   type="file"
@@ -257,13 +281,17 @@ export const CreateToken: FC = () => {
                   onChange={handleImageChange}
                 />
                 {imageFile && (
-                  <p className="text-sm text-muted-foreground">{imageFile.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {imageFile.name}
+                  </p>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tokenDecimals" className="">Decimals</Label>
+                  <Label htmlFor="tokenDecimals" className="">
+                    Decimals
+                  </Label>
                   <Input
                     id="tokenDecimals"
                     type="number"
@@ -271,19 +299,25 @@ export const CreateToken: FC = () => {
                     min={0}
                     max={9}
                     value={tokenDecimals}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTokenDecimals(Number(e.target.value))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setTokenDecimals(Number(e.target.value))
+                    }
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="tokenAmount" className="">Amount to Mint</Label>
+                  <Label htmlFor="tokenAmount" className="">
+                    Amount to Mint
+                  </Label>
                   <Input
                     id="tokenAmount"
                     type="number"
                     className=""
                     min={0}
                     value={tokenAmount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTokenAmount(Number(e.target.value))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setTokenAmount(Number(e.target.value))
+                    }
                   />
                 </div>
               </div>
@@ -297,7 +331,11 @@ export const CreateToken: FC = () => {
               size="default"
               className="w-full"
             >
-              {isLoading ? "Creating..." : publicKey ? "Create My Token" : "Connect Wallet"}
+              {isLoading
+                ? "Creating..."
+                : publicKey
+                  ? "Create My Token"
+                  : "Connect Wallet"}
             </Button>
           </CardFooter>
         </Card>
@@ -326,7 +364,7 @@ export const CreateToken: FC = () => {
             </div>
           </CardContent>
           <CardFooter className="">
-            <Button 
+            <Button
               onClick={() => setTokenMintAddress("")}
               variant="outline"
               size="default"

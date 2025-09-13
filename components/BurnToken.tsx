@@ -4,7 +4,7 @@ import {
   getAssociatedTokenAddress,
   getMint,
   getAccount,
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { toast } from "react-hot-toast";
@@ -15,7 +15,7 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,9 @@ const BurnToken = () => {
   const [isBurning, setIsBurning] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
 
-  const validateAndFetchTokenInfo = async (mintAddr: string): Promise<boolean> => {
+  const validateAndFetchTokenInfo = async (
+    mintAddr: string,
+  ): Promise<boolean> => {
     if (!publicKey) return false;
     try {
       const mint = new PublicKey(mintAddr);
@@ -55,7 +57,9 @@ const BurnToken = () => {
         balance: userBalance / Math.pow(10, mintInfo.decimals),
         decimals: mintInfo.decimals,
         mintAuthority: mintInfo.mintAuthority?.toBase58() || null,
-        supply: (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals)).toString()
+        supply: (
+          Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals)
+        ).toString(),
       };
       setTokenInfo(tokenInfoData);
       if (!accountExists) {
@@ -93,19 +97,25 @@ const BurnToken = () => {
       return;
     }
     if (burnAmount > tokenInfo.balance) {
-      toast.error(`Insufficient balance. You have ${tokenInfo.balance} tokens, trying to burn ${burnAmount}`);
+      toast.error(
+        `Insufficient balance. You have ${tokenInfo.balance} tokens, trying to burn ${burnAmount}`,
+      );
       return;
     }
     const totalSupply = parseFloat(tokenInfo.supply);
     if (burnAmount > totalSupply) {
-      toast.error(`Cannot burn more than total supply. Total supply: ${totalSupply} tokens`);
+      toast.error(
+        `Cannot burn more than total supply. Total supply: ${totalSupply} tokens`,
+      );
       return;
     }
     setIsBurning(true);
     try {
       const mint = new PublicKey(mintAddress);
       const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
-      const burnAmountWithDecimals = BigInt(burnAmount * Math.pow(10, tokenInfo.decimals));
+      const burnAmountWithDecimals = BigInt(
+        burnAmount * Math.pow(10, tokenInfo.decimals),
+      );
       const transaction = new Transaction();
       const { createBurnInstruction } = await import("@solana/spl-token");
       transaction.add(
@@ -115,15 +125,16 @@ const BurnToken = () => {
           publicKey,
           burnAmountWithDecimals,
           [],
-          TOKEN_PROGRAM_ID
-        )
+          TOKEN_PROGRAM_ID,
+        ),
       );
       const signature = await sendTransaction(transaction, connection);
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash();
       await connection.confirmTransaction({
         signature,
         blockhash,
-        lastValidBlockHeight
+        lastValidBlockHeight,
       });
       toast.success(`Successfully burned ${burnAmount} tokens!`);
       await validateAndFetchTokenInfo(mintAddress);
@@ -160,19 +171,24 @@ const BurnToken = () => {
         <CardHeader className="">
           <CardTitle className="">Burn Token</CardTitle>
           <CardDescription className="">
-            Burn specific amounts of SPL tokens you own. Use Close Token Account component to burn all tokens and close the account.
+            Burn specific amounts of SPL tokens you own. Use Close Token Account
+            component to burn all tokens and close the account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mintAddress" className="">Token Mint Address</Label>
+            <Label htmlFor="mintAddress" className="">
+              Token Mint Address
+            </Label>
             <Input
               id="mintAddress"
               type="text"
               className=""
               placeholder="Enter token mint address"
               value={mintAddress}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleMintAddressChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleMintAddressChange(e.target.value)
+              }
             />
           </div>
 
@@ -182,23 +198,27 @@ const BurnToken = () => {
               <div className="grid grid-cols-2 gap-2">
                 <span>Your Balance:</span>
                 <span className="font-mono">{tokenInfo.balance} tokens</span>
-                
+
                 <span>Total Supply:</span>
                 <span className="font-mono">{tokenInfo.supply} tokens</span>
-                
+
                 <span>Decimals:</span>
                 <span className="font-mono">{tokenInfo.decimals}</span>
-                
+
                 <span>Mint Authority:</span>
                 <span className="font-mono text-xs">
-                  {tokenInfo.mintAuthority ? `${tokenInfo.mintAuthority.slice(0, 8)}...${tokenInfo.mintAuthority.slice(-8)}` : "None"}
+                  {tokenInfo.mintAuthority
+                    ? `${tokenInfo.mintAuthority.slice(0, 8)}...${tokenInfo.mintAuthority.slice(-8)}`
+                    : "None"}
                 </span>
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="burnAmount" className="">Amount to Burn</Label>
+            <Label htmlFor="burnAmount" className="">
+              Amount to Burn
+            </Label>
             <Input
               id="burnAmount"
               type="number"
@@ -206,7 +226,9 @@ const BurnToken = () => {
               step="0.000000001"
               placeholder="Enter amount to burn"
               value={amount}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setAmount(e.target.value)
+              }
               max={tokenInfo?.balance || undefined}
             />
             {tokenInfo && (
@@ -226,7 +248,13 @@ const BurnToken = () => {
         <CardFooter className="flex flex-col gap-2">
           <Button
             onClick={handleBurnToken}
-            disabled={!publicKey || isBurning || !tokenInfo || !amount || parseFloat(amount) <= 0}
+            disabled={
+              !publicKey ||
+              isBurning ||
+              !tokenInfo ||
+              !amount ||
+              parseFloat(amount) <= 0
+            }
             variant="destructive"
             size="default"
             className="w-full"
@@ -239,6 +267,4 @@ const BurnToken = () => {
   );
 };
 var stdin_default = BurnToken;
-export {
-  stdin_default as default
-};
+export { stdin_default as default };

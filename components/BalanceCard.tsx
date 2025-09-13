@@ -2,7 +2,13 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const BalanceCard = () => {
   const { connection } = useConnection();
@@ -38,7 +44,9 @@ const BalanceCard = () => {
       <Card className="bg-secondary text-center">
         <CardHeader className="">
           <CardTitle className="">Wallet Balance</CardTitle>
-          <CardDescription className="">Current SOL balance on devnet</CardDescription>
+          <CardDescription className="">
+            Current SOL balance on devnet
+          </CardDescription>
         </CardHeader>
         <CardContent className="">
           <div className="text-3xl font-bold">
@@ -50,6 +58,4 @@ const BalanceCard = () => {
   );
 };
 var stdin_default = BalanceCard;
-export {
-  stdin_default as default
-};
+export { stdin_default as default };

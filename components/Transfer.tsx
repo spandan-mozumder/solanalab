@@ -4,7 +4,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
-  Transaction
+  Transaction,
 } from "@solana/web3.js";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,11 +30,15 @@ const Transfer = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   const [recipients, setRecipients] = useState<Recipient[]>([
-    { address: "", amount: "" }
+    { address: "", amount: "" },
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleRecipientChange = (index: number, field: keyof Recipient, value: string) => {
+  const handleRecipientChange = (
+    index: number,
+    field: keyof Recipient,
+    value: string,
+  ) => {
     const newRecipients = [...recipients];
     newRecipients[index][field] = value;
     setRecipients(newRecipients);
@@ -72,16 +76,17 @@ const Transfer = () => {
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: recipientPublicKey,
-            lamports
-          })
+            lamports,
+          }),
         );
       }
       const signature = await sendTransaction(transaction, connection);
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash();
       await connection.confirmTransaction({
         signature,
         blockhash,
-        lastValidBlockHeight
+        lastValidBlockHeight,
       });
       toast.success("Transfer successful");
       setRecipients([{ address: "", amount: "" }]);
@@ -104,20 +109,29 @@ const Transfer = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           {recipients.map((recipient, index) => (
-            <div key={index} className="space-y-2 rounded-lg relative border p-4">
+            <div
+              key={index}
+              className="space-y-2 rounded-lg relative border p-4"
+            >
               <div className="space-y-2">
-                <Label htmlFor={`recipient-${index}`} className="">Recipient Address</Label>
+                <Label htmlFor={`recipient-${index}`} className="">
+                  Recipient Address
+                </Label>
                 <Input
                   id={`recipient-${index}`}
                   type="text"
                   className=""
                   placeholder="Enter recipient's public key"
                   value={recipient.address}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleRecipientChange(index, "address", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleRecipientChange(index, "address", e.target.value)
+                  }
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={`amount-${index}`} className="">Amount (SOL)</Label>
+                <Label htmlFor={`amount-${index}`} className="">
+                  Amount (SOL)
+                </Label>
                 <Input
                   id={`amount-${index}`}
                   type="number"
@@ -125,7 +139,9 @@ const Transfer = () => {
                   step="0.01"
                   placeholder="Enter amount in SOL"
                   value={recipient.amount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleRecipientChange(index, "amount", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleRecipientChange(index, "amount", e.target.value)
+                  }
                 />
               </div>
               {recipients.length > 1 && (
@@ -141,10 +157,10 @@ const Transfer = () => {
             </div>
           ))}
 
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             size="default"
-            onClick={addRecipient} 
+            onClick={addRecipient}
             className="w-full"
           >
             ➕ Add Recipient
@@ -166,6 +182,4 @@ const Transfer = () => {
   );
 };
 var stdin_default = Transfer;
-export {
-  stdin_default as default
-};
+export { stdin_default as default };

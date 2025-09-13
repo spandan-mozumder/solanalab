@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import { Label } from "./ui/label";
 import {
@@ -17,7 +17,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "./ui/select";
 import { useState } from "react";
 import { Input } from "./ui/input";
@@ -46,7 +46,7 @@ const Airdrop = () => {
 
     if (solAmount > MAX_AIRDROP_SOL) {
       toast.error(
-        `Airdrop amount exceeds the maximum limit of ${MAX_AIRDROP_SOL} SOL`
+        `Airdrop amount exceeds the maximum limit of ${MAX_AIRDROP_SOL} SOL`,
       );
       return;
     }
@@ -63,13 +63,14 @@ const Airdrop = () => {
     try {
       const signature = await connection.requestAirdrop(
         recipient,
-        solAmount * LAMPORTS_PER_SOL
+        solAmount * LAMPORTS_PER_SOL,
       );
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash();
       await connection.confirmTransaction({
         signature,
         blockhash,
-        lastValidBlockHeight
+        lastValidBlockHeight,
       });
       toast.success("Airdrop successful");
       setAmount("");
@@ -78,7 +79,7 @@ const Airdrop = () => {
       console.error("Airdrop failed", error);
       if (error?.message?.includes("429")) {
         toast.error(
-          "🚫 Devnet faucet limit reached or faucet is empty. Try again later or use https://faucet.solana.com"
+          "🚫 Devnet faucet limit reached or faucet is empty. Try again later or use https://faucet.solana.com",
         );
       } else {
         toast.error(`Airdrop failed: ${error?.message || error}`);
@@ -94,23 +95,24 @@ const Airdrop = () => {
         <CardHeader className="">
           <CardTitle className="">Airdrop SOL</CardTitle>
           <CardDescription className="">
-            Airdrop SOL to your connected account or a different account (Specific
-            to devnet only).
+            Airdrop SOL to your connected account or a different account
+            (Specific to devnet only).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="space-y-2">
             <Label className="">Choose Airdrop Target</Label>
-            <Select
-              value={mode}
-              onValueChange={(v: string) => setMode(v)}
-            >
+            <Select value={mode} onValueChange={(v: string) => setMode(v)}>
               <SelectTrigger className="">
                 <SelectValue placeholder="Select target" />
               </SelectTrigger>
               <SelectContent className="">
-                <SelectItem value="self" className="">My Account</SelectItem>
-                <SelectItem value="other" className="">Other Account</SelectItem>
+                <SelectItem value="self" className="">
+                  My Account
+                </SelectItem>
+                <SelectItem value="other" className="">
+                  Other Account
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -124,7 +126,9 @@ const Airdrop = () => {
                   className=""
                   placeholder="Enter Solana address"
                   value={targetAddress}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetAddress(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setTargetAddress(e.target.value)
+                  }
                 />
               </>
             )}
@@ -140,14 +144,21 @@ const Airdrop = () => {
               max={MAX_AIRDROP_SOL}
               placeholder="Enter SOL amount"
               value={amount}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setAmount(e.target.value)
+              }
             />
           </div>
         </CardContent>
         <CardFooter className="">
           <Button
             onClick={handleAirdrop}
-            disabled={!publicKey || isProcessing || (mode === "other" && !targetAddress) || !amount}
+            disabled={
+              !publicKey ||
+              isProcessing ||
+              (mode === "other" && !targetAddress) ||
+              !amount
+            }
             variant="default"
             size="default"
             className="w-full"
@@ -160,6 +171,4 @@ const Airdrop = () => {
   );
 };
 var stdin_default = Airdrop;
-export {
-  stdin_default as default
-};
+export { stdin_default as default };

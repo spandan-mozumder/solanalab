@@ -126,5 +126,9 @@
 }
 
 .bg-gradient-hero {
-  background: linear-gradient(to bottom right, hsl(var(--primary)), hsl(var(--secondary)));
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--primary)),
+    hsl(var(--secondary))
+  );
 }
