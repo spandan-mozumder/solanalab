@@ -34,7 +34,7 @@ const BalanceCard = () => {
   }, [connection, publicKey]);
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div className="p-4">
       <Card className="bg-secondary text-center">
         <CardHeader className="">
           <CardTitle className="">Wallet Balance</CardTitle>

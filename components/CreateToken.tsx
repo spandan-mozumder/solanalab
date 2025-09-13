@@ -30,12 +30,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-// This component is now self-contained and does not rely on any custom contexts
 export const CreateToken: FC = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
 
-  // Form state
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenDescription, setTokenDescription] = useState("");
@@ -43,7 +41,6 @@ export const CreateToken: FC = () => {
   const [tokenAmount, setTokenAmount] = useState(1000000);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [tokenMintAddress, setTokenMintAddress] = useState("");
 
@@ -172,7 +169,6 @@ export const CreateToken: FC = () => {
         signers: [mintKeypair],
       });
       
-      // <-- CHANGED: Hardcoded cluster to 'devnet'
       const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
       
       toast.success(
@@ -193,7 +189,6 @@ export const CreateToken: FC = () => {
     publicKey,
     connection,
     sendTransaction,
-    // <-- REMOVED: networkConfiguration dependency
     tokenName,
     tokenSymbol,
     tokenDescription,
@@ -203,7 +198,7 @@ export const CreateToken: FC = () => {
   ]);
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div className="p-4">
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <ClipLoader color="white" size={50} />

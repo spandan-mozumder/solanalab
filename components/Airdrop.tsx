@@ -89,7 +89,7 @@ const Airdrop = () => {
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div className="p-4">
       <Card className="">
         <CardHeader className="">
           <CardTitle className="">Airdrop SOL</CardTitle>
