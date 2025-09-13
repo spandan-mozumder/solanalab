@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
-async function POST(request) {
+
+async function POST(request: NextRequest) {
   try {
     const metadata = await request.json();
-    const headers = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
     if (process.env.PINATA_JWT) {
       headers["Authorization"] = `Bearer ${process.env.PINATA_JWT}`;
     } else if (
@@ -13,17 +15,20 @@ async function POST(request) {
       headers["pinata_api_key"] = process.env.PINATA_API_KEY;
       headers["pinata_secret_api_key"] = process.env.PINATA_SECRET_API_KEY;
     }
+
     const body = {
       pinataContent: metadata,
       pinataMetadata: {
         name: `${metadata.name}_metadata.json`,
       },
     };
+
     const resp = await axios.post(
       "https://api.pinata.cloud/pinning/pinJSONToIPFS",
       body,
       { headers },
     );
+
     return NextResponse.json(resp.data);
   } catch (error) {
     console.error("Pinata metadata upload error:", error);
@@ -33,4 +38,5 @@ async function POST(request) {
     );
   }
 }
+
 export { POST };

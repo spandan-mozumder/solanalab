@@ -1,4 +1,5 @@
 "use client";
+
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useEffect, useState } from "react";
@@ -13,15 +14,18 @@ import {
 const BalanceCard = () => {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
+
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
+
     const fetchBalance = async () => {
       if (!publicKey) {
         setBalance(null);
         return;
       }
+
       try {
         const lamports = await connection.getBalance(publicKey);
         if (!mounted) return;
@@ -33,6 +37,7 @@ const BalanceCard = () => {
 
     fetchBalance();
     const id = setInterval(fetchBalance, 10000);
+
     return () => {
       mounted = false;
       clearInterval(id);
@@ -57,5 +62,6 @@ const BalanceCard = () => {
     </div>
   );
 };
-var stdin_default = BalanceCard;
-export { stdin_default as default };
+
+const BalanceCard_default = BalanceCard;
+export { BalanceCard_default as default };

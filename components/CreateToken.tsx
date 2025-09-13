@@ -15,6 +15,8 @@ import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddress,
   createMintToInstruction,
+  createSetAuthorityInstruction,
+  AuthorityType,
 } from "@solana/spl-token";
 import {
   createCreateMetadataAccountV3Instruction,
@@ -35,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const CreateToken: FC = () => {
   const { connection } = useConnection();
@@ -46,6 +49,8 @@ export const CreateToken: FC = () => {
   const [tokenDecimals, setTokenDecimals] = useState(9);
   const [tokenAmount, setTokenAmount] = useState(1000000);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [revokeMintAuthority, setRevokeMintAuthority] = useState(false);
+  const [revokeFreezeAuthority, setRevokeFreezeAuthority] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [tokenMintAddress, setTokenMintAddress] = useState("");
@@ -95,8 +100,9 @@ export const CreateToken: FC = () => {
       metadataUri = `https://ipfs.io/ipfs/${jsonUploadResponse.IpfsHash}`;
 
       toast.success("Metadata uploaded!", { id: toastId });
-    } catch (error: any) {
-      toast.error(`Metadata upload failed: ${error.message}`, { id: toastId });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Metadata upload failed: ${errorMessage}`, { id: toastId });
       setIsLoading(false);
       return;
     }
@@ -171,6 +177,28 @@ export const CreateToken: FC = () => {
         ),
       );
 
+      if (revokeMintAuthority) {
+        tx.add(
+          createSetAuthorityInstruction(
+            mintKeypair.publicKey,
+            publicKey,
+            AuthorityType.MintTokens,
+            null,
+          ),
+        );
+      }
+
+      if (revokeFreezeAuthority) {
+        tx.add(
+          createSetAuthorityInstruction(
+            mintKeypair.publicKey,
+            publicKey,
+            AuthorityType.FreezeAccount,
+            null,
+          ),
+        );
+      }
+
       const signature = await sendTransaction(tx, connection, {
         signers: [mintKeypair],
       });
@@ -190,8 +218,9 @@ export const CreateToken: FC = () => {
       );
 
       setTokenMintAddress(mintKeypair.publicKey.toString());
-    } catch (error: any) {
-      toast.error(`Token creation failed: ${error.message}`, { id: toastId });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Token creation failed: ${errorMessage}`, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -205,6 +234,8 @@ export const CreateToken: FC = () => {
     tokenDecimals,
     tokenAmount,
     imageFile,
+    revokeMintAuthority,
+    revokeFreezeAuthority,
   ]);
 
   return (
@@ -319,6 +350,40 @@ export const CreateToken: FC = () => {
                       setTokenAmount(Number(e.target.value))
                     }
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <Label className="text-base font-semibold">Authority Options</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="revokeMintAuthority"
+                      className=""
+                      checked={revokeMintAuthority}
+                      onCheckedChange={(checked: boolean) => setRevokeMintAuthority(checked)}
+                    />
+                    <Label
+                      htmlFor="revokeMintAuthority"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Revoke Mint Authority (Cannot mint more tokens)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="revokeFreezeAuthority"
+                      className=""
+                      checked={revokeFreezeAuthority}
+                      onCheckedChange={(checked: boolean) => setRevokeFreezeAuthority(checked)}
+                    />
+                    <Label
+                      htmlFor="revokeFreezeAuthority"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Revoke Freeze Authority (Cannot freeze token accounts)
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>

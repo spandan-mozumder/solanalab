@@ -1,4 +1,5 @@
 "use client";
+
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   LAMPORTS_PER_SOL,
@@ -29,6 +30,7 @@ interface Recipient {
 const Transfer = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
+
   const [recipients, setRecipients] = useState<Recipient[]>([
     { address: "", amount: "" },
   ]);
@@ -43,9 +45,11 @@ const Transfer = () => {
     newRecipients[index][field] = value;
     setRecipients(newRecipients);
   };
+
   const addRecipient = () => {
     setRecipients([...recipients, { address: "", amount: "" }]);
   };
+
   const removeRecipient = (index: number) => {
     if (recipients.length === 1) return;
     const newRecipients = recipients.filter((_, i) => i !== index);
@@ -90,7 +94,7 @@ const Transfer = () => {
       });
       toast.success("Transfer successful");
       setRecipients([{ address: "", amount: "" }]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Transfer failed");
       console.error("Transfer failed", error);
     } finally {
@@ -181,5 +185,6 @@ const Transfer = () => {
     </div>
   );
 };
-var stdin_default = Transfer;
-export { stdin_default as default };
+
+const Transfer_default = Transfer;
+export { Transfer_default as default };

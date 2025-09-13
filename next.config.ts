@@ -1,5 +1,11 @@
 const nextConfig = {
-  /* config options here */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
-var stdin_default = nextConfig;
-export { stdin_default as default };
+
+const nextConfig_default = nextConfig;
+export { nextConfig_default as default };

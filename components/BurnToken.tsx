@@ -1,4 +1,5 @@
 "use client";
+
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   getAssociatedTokenAddress,
@@ -31,6 +32,7 @@ interface TokenInfo {
 const BurnToken = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
+
   const [mintAddress, setMintAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [isBurning, setIsBurning] = useState(false);
@@ -40,19 +42,23 @@ const BurnToken = () => {
     mintAddr: string,
   ): Promise<boolean> => {
     if (!publicKey) return false;
+
     try {
       const mint = new PublicKey(mintAddr);
       const mintInfo = await getMint(connection, mint);
       const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
+
       let userBalance = 0;
       let accountExists = false;
+
       try {
         const userTokenAccount = await getAccount(connection, userTokenAddress);
         userBalance = Number(userTokenAccount.amount);
         accountExists = true;
-      } catch (error) {
+      } catch {
         console.log("Token account doesn't exist for this user");
       }
+
       const tokenInfoData = {
         balance: userBalance / Math.pow(10, mintInfo.decimals),
         decimals: mintInfo.decimals,
@@ -61,15 +67,19 @@ const BurnToken = () => {
           Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals)
         ).toString(),
       };
+
       setTokenInfo(tokenInfoData);
+
       if (!accountExists) {
         toast.error("You don't have a token account for this mint address");
         return false;
       }
+
       if (userBalance === 0) {
         toast.error("You don't have any tokens to burn");
         return false;
       }
+
       return true;
     } catch (error) {
       console.error("Error fetching token info:", error);
@@ -78,30 +88,36 @@ const BurnToken = () => {
       return false;
     }
   };
+
   const handleBurnToken = async () => {
     if (!publicKey) {
       toast.error("Please connect your wallet");
       return;
     }
+
     if (!mintAddress || !amount) {
       toast.error("Please enter mint address and amount");
       return;
     }
+
     const burnAmount = parseFloat(amount);
     if (burnAmount <= 0) {
       toast.error("Amount must be greater than 0");
       return;
     }
+
     const isValid = await validateAndFetchTokenInfo(mintAddress);
     if (!isValid || !tokenInfo) {
       return;
     }
+
     if (burnAmount > tokenInfo.balance) {
       toast.error(
         `Insufficient balance. You have ${tokenInfo.balance} tokens, trying to burn ${burnAmount}`,
       );
       return;
     }
+
     const totalSupply = parseFloat(tokenInfo.supply);
     if (burnAmount > totalSupply) {
       toast.error(
@@ -109,15 +125,19 @@ const BurnToken = () => {
       );
       return;
     }
+
     setIsBurning(true);
+
     try {
       const mint = new PublicKey(mintAddress);
       const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
       const burnAmountWithDecimals = BigInt(
         burnAmount * Math.pow(10, tokenInfo.decimals),
       );
+
       const transaction = new Transaction();
       const { createBurnInstruction } = await import("@solana/spl-token");
+
       transaction.add(
         createBurnInstruction(
           userTokenAddress,
@@ -128,24 +148,29 @@ const BurnToken = () => {
           TOKEN_PROGRAM_ID,
         ),
       );
+
       const signature = await sendTransaction(transaction, connection);
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash();
+
       await connection.confirmTransaction({
         signature,
         blockhash,
         lastValidBlockHeight,
       });
+
       toast.success(`Successfully burned ${burnAmount} tokens!`);
       await validateAndFetchTokenInfo(mintAddress);
       setAmount("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Token burn failed:", error);
-      if (error?.message?.includes("insufficient funds")) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes("insufficient funds")) {
         toast.error("Insufficient SOL for transaction fees");
-      } else if (error?.message?.includes("Account not found")) {
+      } else if (errorMessage.includes("Account not found")) {
         toast.error("Token account not found");
-      } else if (error?.message?.includes("insufficient account balance")) {
+      } else if (errorMessage.includes("insufficient account balance")) {
         toast.error("Insufficient token balance");
       } else {
         toast.error("Token burn failed. Check console for details.");
@@ -158,6 +183,7 @@ const BurnToken = () => {
   const handleMintAddressChange = (value: string) => {
     setMintAddress(value);
     setTokenInfo(null);
+
     if (value && value.length >= 32) {
       setTimeout(() => {
         validateAndFetchTokenInfo(value);
@@ -175,6 +201,7 @@ const BurnToken = () => {
             component to burn all tokens and close the account.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="mintAddress" className="">
@@ -231,6 +258,7 @@ const BurnToken = () => {
               }
               max={tokenInfo?.balance || undefined}
             />
+
             {tokenInfo && (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Available: {tokenInfo.balance} tokens</span>
@@ -245,6 +273,7 @@ const BurnToken = () => {
             )}
           </div>
         </CardContent>
+
         <CardFooter className="flex flex-col gap-2">
           <Button
             onClick={handleBurnToken}
@@ -266,5 +295,6 @@ const BurnToken = () => {
     </div>
   );
 };
-var stdin_default = BurnToken;
-export { stdin_default as default };
+
+const BurnToken_default = BurnToken;
+export { BurnToken_default as default };

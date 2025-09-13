@@ -1,4 +1,5 @@
 "use client";
+
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   getAssociatedTokenAddress,
@@ -31,6 +32,7 @@ interface TokenInfo {
 const CloseTokenAccount = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
+
   const [mintAddress, setMintAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
@@ -39,21 +41,23 @@ const CloseTokenAccount = () => {
     mintAddr: string,
   ): Promise<boolean> => {
     if (!publicKey) return false;
+
     try {
       const mint = new PublicKey(mintAddr);
       const mintInfo = await getMint(connection, mint);
       const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
+
       let userBalance = 0;
-      let accountExists = false;
+
       try {
         const userTokenAccount = await getAccount(connection, userTokenAddress);
         userBalance = Number(userTokenAccount.amount);
-        accountExists = true;
-      } catch (error) {
+      } catch {
         console.log("Token account doesn't exist for this user");
         toast.error("You don't have a token account for this mint address");
         return false;
       }
+
       const tokenInfoData = {
         balance: userBalance / Math.pow(10, mintInfo.decimals),
         decimals: mintInfo.decimals,
@@ -62,6 +66,7 @@ const CloseTokenAccount = () => {
           Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals)
         ).toString(),
       };
+
       setTokenInfo(tokenInfoData);
       return true;
     } catch (error) {
@@ -71,29 +76,36 @@ const CloseTokenAccount = () => {
       return false;
     }
   };
+
   const handleBurnAllAndClose = async () => {
     if (!publicKey) {
       toast.error("Please connect your wallet");
       return;
     }
+
     if (!mintAddress) {
       toast.error("Please enter mint address");
       return;
     }
+
     const isValid = await validateAndFetchTokenInfo(mintAddress);
     if (!isValid || !tokenInfo) {
       return;
     }
+
     setIsProcessing(true);
+
     try {
       const mint = new PublicKey(mintAddress);
       const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
       const transaction = new Transaction();
+
       if (tokenInfo.balance > 0) {
         const burnAmountWithDecimals = BigInt(
           tokenInfo.balance * Math.pow(10, tokenInfo.decimals),
         );
         const { createBurnInstruction } = await import("@solana/spl-token");
+
         transaction.add(
           createBurnInstruction(
             userTokenAddress,
@@ -105,9 +117,11 @@ const CloseTokenAccount = () => {
           ),
         );
       }
+
       const { createCloseAccountInstruction } = await import(
         "@solana/spl-token"
       );
+
       transaction.add(
         createCloseAccountInstruction(
           userTokenAddress,
@@ -117,14 +131,17 @@ const CloseTokenAccount = () => {
           TOKEN_PROGRAM_ID,
         ),
       );
+
       const signature = await sendTransaction(transaction, connection);
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash();
+
       await connection.confirmTransaction({
         signature,
         blockhash,
         lastValidBlockHeight,
       });
+
       if (tokenInfo.balance > 0) {
         toast.success(
           `Successfully burned ${tokenInfo.balance} tokens and closed account!`,
@@ -132,15 +149,18 @@ const CloseTokenAccount = () => {
       } else {
         toast.success("Token account closed successfully!");
       }
+
       setTokenInfo(null);
       setMintAddress("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Burn and close failed:", error);
-      if (error?.message?.includes("insufficient funds")) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes("insufficient funds")) {
         toast.error("Insufficient SOL for transaction fees");
-      } else if (error?.message?.includes("Account not found")) {
+      } else if (errorMessage.includes("Account not found")) {
         toast.error("Token account not found or already closed");
-      } else if (error?.message?.includes("insufficient account balance")) {
+      } else if (errorMessage.includes("insufficient account balance")) {
         toast.error("Insufficient token balance");
       } else {
         toast.error("Operation failed. Check console for details.");
@@ -159,6 +179,7 @@ const CloseTokenAccount = () => {
       }, 500);
     }
   };
+
   return (
     <div className="p-4">
       <Card className="">
@@ -247,5 +268,6 @@ const CloseTokenAccount = () => {
     </div>
   );
 };
-var stdin_default = CloseTokenAccount;
-export { stdin_default as default };
+
+const CloseTokenAccount_default = CloseTokenAccount;
+export { CloseTokenAccount_default as default };

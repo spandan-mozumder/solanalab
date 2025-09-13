@@ -1,4 +1,5 @@
 "use client";
+
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { toast } from "react-hot-toast";
@@ -27,6 +28,7 @@ const MAX_AIRDROP_SOL = 2;
 const Airdrop = () => {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
+
   const [mode, setMode] = useState("self");
   const [targetAddress, setTargetAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -54,7 +56,7 @@ const Airdrop = () => {
     let recipient: PublicKey;
     try {
       recipient = mode === "self" ? publicKey : new PublicKey(targetAddress);
-    } catch (error) {
+    } catch {
       toast.error("Invalid recipient address");
       return;
     }
@@ -75,14 +77,15 @@ const Airdrop = () => {
       toast.success("Airdrop successful");
       setAmount("");
       setTargetAddress("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Airdrop failed", error);
-      if (error?.message?.includes("429")) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes("429")) {
         toast.error(
           "🚫 Devnet faucet limit reached or faucet is empty. Try again later or use https://faucet.solana.com",
         );
       } else {
-        toast.error(`Airdrop failed: ${error?.message || error}`);
+        toast.error(`Airdrop failed: ${errorMessage}`);
       }
     } finally {
       setIsProcessing(false);
@@ -170,5 +173,6 @@ const Airdrop = () => {
     </div>
   );
 };
-var stdin_default = Airdrop;
-export { stdin_default as default };
+
+const Airdrop_default = Airdrop;
+export { Airdrop_default as default };

@@ -4,6 +4,7 @@ import BurnToken from "@/components/BurnToken";
 import CloseTokenAccount from "@/components/CloseTokenAccount";
 import BalanceCard from "@/components/BalanceCard";
 import { CreateToken } from "@/components/CreateToken";
+import { RevokeAuthority } from "@/components/RevokeAuthority";
 
 const HomePage = () => {
   return (
@@ -15,11 +16,13 @@ const HomePage = () => {
       </div>
       <div className="flex flex-col flex-1">
         <CreateToken />
+        <RevokeAuthority />
         <BurnToken />
         <CloseTokenAccount />
       </div>
     </main>
   );
 };
-var stdin_default = HomePage;
-export { stdin_default as default };
+
+const HomePage_default = HomePage;
+export { HomePage_default as default };
