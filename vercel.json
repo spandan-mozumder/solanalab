@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "app/api/**/*.{js,ts}": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "build": {
+    "env": {
+      "NEXT_BUILD_WORKERS": "1"
+    }
+  },
+  "outputFileTracing": {
+    "ignorePath": [
+      "node_modules/viem/**/*",
+      "node_modules/@walletconnect/**/*",
+      "node_modules/@reown/**/*",
+      "node_modules/@solana/wallet-adapter-wallets/**/*"
+    ]
+  }
+}

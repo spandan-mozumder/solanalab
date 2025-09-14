@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { ModeToggle } from "@/components/ModeToggle";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+
 function Header() {
   return (
     <header className="w-full py-4 px-10 lg:px-30 border-b border-transparent/10 backdrop-blur-sm">
@@ -32,4 +33,5 @@ function Header() {
     </header>
   );
 }
-export { Header as default };
+
+export default Header;
