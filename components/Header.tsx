@@ -8,7 +8,7 @@ function Header() {
     <header className="w-full py-4 px-10 lg:px-30 border-b border-transparent/10 backdrop-blur-sm">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center bg-white/5">
+          <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-md flex items-center justify-center bg-white/5">
             <Image
               src="/favicon.ico"
               alt="Tasks"
