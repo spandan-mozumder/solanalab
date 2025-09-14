@@ -39,13 +39,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  handleError, 
+  AsyncOperationHandler, 
   validateWalletConnection, 
   validateRequiredFields,
   ERROR_MESSAGES,
-  SUCCESS_MESSAGES
+  SUCCESS_MESSAGES,
+  LOADING_MESSAGES
 } from "@/lib/error-handler";
-import { toast } from "react-hot-toast";
 
 export const CreateToken: FC = () => {
   const { connection } = useConnection();
@@ -62,7 +62,6 @@ export const CreateToken: FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [tokenMintAddress, setTokenMintAddress] = useState("");
-  const [validationError, setValidationError] = useState("");
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -72,30 +71,25 @@ export const CreateToken: FC = () => {
   };
 
   const createToken = useCallback(async () => {
+    if (!publicKey) {
+      toast.error("Wallet not connected!");
+      return;
+    }
+    if (!imageFile || !tokenName || !tokenSymbol) {
+      toast.error("Please fill out all required fields.");
+      return;
+    }
+
+    setIsLoading(true);
+    const toastId = toast.loading("Uploading metadata to IPFS...");
+
+    let metadataUri = "";
     try {
-      // Clear previous validation errors
-      setValidationError("");
-      
-      // Validation
-      validateWalletConnection(publicKey);
-      
-      const requiredFields = {
-        'Token name': tokenName,
-        'Token symbol': tokenSymbol,
-        'Image file': imageFile
-      };
-      validateRequiredFields(requiredFields);
-
-      setIsLoading(true);
-      const toastId = toast.loading("Uploading metadata to IPFS...");
-
-      // Upload metadata to IPFS
-      let metadataUri = "";
       const pinata = new PinataSDK({
         pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
       });
 
-      const imageUploadResponse = await pinata.upload.file(imageFile!);
+      const imageUploadResponse = await pinata.upload.file(imageFile);
       const ipfsImageUri = `https://ipfs.io/ipfs/${imageUploadResponse.IpfsHash}`;
 
       const json = {
@@ -114,20 +108,26 @@ export const CreateToken: FC = () => {
       metadataUri = `https://ipfs.io/ipfs/${jsonUploadResponse.IpfsHash}`;
 
       toast.success("Metadata uploaded!", { id: toastId });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Metadata upload failed: ${errorMessage}`, { id: toastId });
+      setIsLoading(false);
+      return;
+    }
 
-      // Create token on Solana
+    try {
       toast.loading("Creating token on Solana...", { id: toastId });
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
 
       const associatedTokenAccount = await getAssociatedTokenAddress(
         mintKeypair.publicKey,
-        publicKey!,
+        publicKey,
       );
 
       const tx = new Transaction().add(
         SystemProgram.createAccount({
-          fromPubkey: publicKey!,
+          fromPubkey: publicKey,
           newAccountPubkey: mintKeypair.publicKey,
           space: MINT_SIZE,
           lamports,
@@ -136,8 +136,8 @@ export const CreateToken: FC = () => {
         createInitializeMintInstruction(
           mintKeypair.publicKey,
           tokenDecimals,
-          publicKey!,
-          publicKey!,
+          publicKey,
+          publicKey,
           TOKEN_PROGRAM_ID,
         ),
         createCreateMetadataAccountV3Instruction(
@@ -151,9 +151,9 @@ export const CreateToken: FC = () => {
               METADATA_PROGRAM_ID,
             )[0],
             mint: mintKeypair.publicKey,
-            mintAuthority: publicKey!,
-            payer: publicKey!,
-            updateAuthority: publicKey!,
+            mintAuthority: publicKey,
+            payer: publicKey,
+            updateAuthority: publicKey,
           },
           {
             createMetadataAccountArgsV3: {
@@ -172,15 +172,15 @@ export const CreateToken: FC = () => {
           },
         ),
         createAssociatedTokenAccountInstruction(
-          publicKey!,
+          publicKey,
           associatedTokenAccount,
-          publicKey!,
+          publicKey,
           mintKeypair.publicKey,
         ),
         createMintToInstruction(
           mintKeypair.publicKey,
           associatedTokenAccount,
-          publicKey!,
+          publicKey,
           tokenAmount * Math.pow(10, tokenDecimals),
         ),
       );
@@ -189,7 +189,7 @@ export const CreateToken: FC = () => {
         tx.add(
           createSetAuthorityInstruction(
             mintKeypair.publicKey,
-            publicKey!,
+            publicKey,
             AuthorityType.MintTokens,
             null,
           ),
@@ -200,7 +200,7 @@ export const CreateToken: FC = () => {
         tx.add(
           createSetAuthorityInstruction(
             mintKeypair.publicKey,
-            publicKey!,
+            publicKey,
             AuthorityType.FreezeAccount,
             null,
           ),
@@ -226,12 +226,9 @@ export const CreateToken: FC = () => {
       );
 
       setTokenMintAddress(mintKeypair.publicKey.toString());
-      
-    } catch (error) {
-      handleError(error, { context: "Token creation failed" });
-      if (error instanceof Error) {
-        setValidationError(error.message);
-      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Token creation failed: ${errorMessage}`, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -263,12 +260,6 @@ export const CreateToken: FC = () => {
             <CardTitle className="">Create SPL Token</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {validationError && (
-              <Alert variant="destructive" className="">
-                <AlertDescription className="">{validationError}</AlertDescription>
-              </Alert>
-            )}
-            
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tokenName" className="">

@@ -20,7 +20,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
+import { 
+  handleError, 
+  validateWalletConnection, 
+  validateRequiredFields,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES
+} from "@/lib/error-handler";
 
 interface TokenInfo {
   balance: number;
@@ -37,16 +45,17 @@ const BurnToken = () => {
   const [amount, setAmount] = useState("");
   const [isBurning, setIsBurning] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [validationError, setValidationError] = useState("");
 
   const validateAndFetchTokenInfo = async (
     mintAddr: string,
   ): Promise<boolean> => {
-    if (!publicKey) return false;
-
     try {
+      validateWalletConnection(publicKey);
+
       const mint = new PublicKey(mintAddr);
       const mintInfo = await getMint(connection, mint);
-      const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
+      const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey!);
 
       let userBalance = 0;
       let accountExists = false;
@@ -71,66 +80,63 @@ const BurnToken = () => {
       setTokenInfo(tokenInfoData);
 
       if (!accountExists) {
-        toast.error("You don't have a token account for this mint address");
-        return false;
+        throw new Error("You don't have a token account for this mint address");
       }
 
       if (userBalance === 0) {
-        toast.error("You don't have any tokens to burn");
-        return false;
+        throw new Error("You don't have any tokens to burn");
       }
 
       return true;
     } catch (error) {
-      console.error("Error fetching token info:", error);
-      toast.error("Invalid mint address or failed to fetch token info");
+      handleError(error, { context: "Failed to fetch token info" });
       setTokenInfo(null);
       return false;
     }
   };
 
   const handleBurnToken = async () => {
-    if (!publicKey) {
-      toast.error("Please connect your wallet");
-      return;
-    }
-
-    if (!mintAddress || !amount) {
-      toast.error("Please enter mint address and amount");
-      return;
-    }
-
-    const burnAmount = parseFloat(amount);
-    if (burnAmount <= 0) {
-      toast.error("Amount must be greater than 0");
-      return;
-    }
-
-    const isValid = await validateAndFetchTokenInfo(mintAddress);
-    if (!isValid || !tokenInfo) {
-      return;
-    }
-
-    if (burnAmount > tokenInfo.balance) {
-      toast.error(
-        `Insufficient balance. You have ${tokenInfo.balance} tokens, trying to burn ${burnAmount}`,
-      );
-      return;
-    }
-
-    const totalSupply = parseFloat(tokenInfo.supply);
-    if (burnAmount > totalSupply) {
-      toast.error(
-        `Cannot burn more than total supply. Total supply: ${totalSupply} tokens`,
-      );
-      return;
-    }
-
-    setIsBurning(true);
-
     try {
+      // Clear previous validation errors
+      setValidationError("");
+      
+      // Validation
+      validateWalletConnection(publicKey);
+      
+      const requiredFields = {
+        'Mint address': mintAddress,
+        'Amount': amount
+      };
+      validateRequiredFields(requiredFields);
+
+      const burnAmount = parseFloat(amount);
+      if (burnAmount <= 0) {
+        throw new Error("Amount must be greater than 0");
+      }
+
+      const isValid = await validateAndFetchTokenInfo(mintAddress);
+      if (!isValid || !tokenInfo) {
+        return;
+      }
+
+      if (burnAmount > tokenInfo.balance) {
+        throw new Error(
+          `Insufficient balance. You have ${tokenInfo.balance} tokens, trying to burn ${burnAmount}`
+        );
+      }
+
+      const totalSupply = parseFloat(tokenInfo.supply);
+      if (burnAmount > totalSupply) {
+        throw new Error(
+          `Cannot burn more than total supply. Total supply: ${totalSupply} tokens`
+        );
+      }
+
+      setIsBurning(true);
+      const toastId = toast.loading("Burning tokens...");
+
       const mint = new PublicKey(mintAddress);
-      const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey);
+      const userTokenAddress = await getAssociatedTokenAddress(mint, publicKey!);
       const burnAmountWithDecimals = BigInt(
         burnAmount * Math.pow(10, tokenInfo.decimals),
       );
@@ -142,7 +148,7 @@ const BurnToken = () => {
         createBurnInstruction(
           userTokenAddress,
           mint,
-          publicKey,
+          publicKey!,
           burnAmountWithDecimals,
           [],
           TOKEN_PROGRAM_ID,
@@ -159,21 +165,14 @@ const BurnToken = () => {
         lastValidBlockHeight,
       });
 
-      toast.success(`Successfully burned ${burnAmount} tokens!`);
+      toast.success(SUCCESS_MESSAGES.TOKEN_BURNED, { id: toastId });
       await validateAndFetchTokenInfo(mintAddress);
       setAmount("");
-    } catch (error: unknown) {
-      console.error("Token burn failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes("insufficient funds")) {
-        toast.error("Insufficient SOL for transaction fees");
-      } else if (errorMessage.includes("Account not found")) {
-        toast.error("Token account not found");
-      } else if (errorMessage.includes("insufficient account balance")) {
-        toast.error("Insufficient token balance");
-      } else {
-        toast.error("Token burn failed. Check console for details.");
+      
+    } catch (error) {
+      handleError(error, { context: "Token burn failed" });
+      if (error instanceof Error) {
+        setValidationError(error.message);
       }
     } finally {
       setIsBurning(false);
@@ -203,6 +202,12 @@ const BurnToken = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {validationError && (
+            <Alert variant="destructive" className="">
+              <AlertDescription className="">{validationError}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="mintAddress" className="">
               Token Mint Address

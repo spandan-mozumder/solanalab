@@ -19,8 +19,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { Trash } from "lucide-react";
+import { 
+  handleError, 
+  validateWalletConnection, 
+  validateRequiredFields,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES
+} from "@/lib/error-handler";
 
 interface Recipient {
   address: string;
@@ -35,6 +43,7 @@ const Transfer = () => {
     { address: "", amount: "" },
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   const handleRecipientChange = (
     index: number,
@@ -57,33 +66,46 @@ const Transfer = () => {
   };
 
   const handleTransfer = async () => {
-    if (!publicKey) {
-      toast.error("Please connect your wallet");
-      return;
-    }
-
-    setIsProcessing(true);
     try {
+      // Clear previous validation errors
+      setValidationError("");
+      
+      // Validation
+      validateWalletConnection(publicKey);
+
+      setIsProcessing(true);
+      const toastId = toast.loading("Processing batch transfer...");
+      
       const transaction = new Transaction();
+      
+      // Validate recipients and build transaction
       for (const { address, amount } of recipients) {
-        if (!address || !amount) {
-          toast.error("Please enter a recipient and amount fields");
-          return;
+        const requiredFields = {
+          'Recipient address': address,
+          'Amount': amount
+        };
+        validateRequiredFields(requiredFields);
+        
+        try {
+          const recipientPublicKey = new PublicKey(address);
+          const lamports = parseFloat(amount) * LAMPORTS_PER_SOL;
+          
+          if (isNaN(lamports) || lamports <= 0) {
+            throw new Error("Please enter a valid amount greater than 0");
+          }
+          
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey!,
+              toPubkey: recipientPublicKey,
+              lamports,
+            }),
+          );
+        } catch (addressError) {
+          throw new Error(`Invalid recipient address: ${address}`);
         }
-        const recipientPublicKey = new PublicKey(address);
-        const lamports = parseFloat(amount) * LAMPORTS_PER_SOL;
-        if (isNaN(lamports) || lamports <= 0) {
-          toast.error("Please enter a valid amount");
-          return;
-        }
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: recipientPublicKey,
-            lamports,
-          }),
-        );
       }
+      
       const signature = await sendTransaction(transaction, connection);
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash();
@@ -92,11 +114,15 @@ const Transfer = () => {
         blockhash,
         lastValidBlockHeight,
       });
-      toast.success("Transfer successful");
+      
+      toast.success(SUCCESS_MESSAGES.TRANSFER_COMPLETED, { id: toastId });
       setRecipients([{ address: "", amount: "" }]);
-    } catch (error: unknown) {
-      toast.error("Transfer failed");
-      console.error("Transfer failed", error);
+      
+    } catch (error) {
+      handleError(error, { context: "Batch transfer failed" });
+      if (error instanceof Error) {
+        setValidationError(error.message);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -112,6 +138,12 @@ const Transfer = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {validationError && (
+            <Alert variant="destructive" className="">
+              <AlertDescription className="">{validationError}</AlertDescription>
+            </Alert>
+          )}
+          
           {recipients.map((recipient, index) => (
             <div
               key={index}

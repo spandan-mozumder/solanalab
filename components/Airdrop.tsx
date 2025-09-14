@@ -20,8 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { Input } from "./ui/input";
+import { 
+  handleError, 
+  validateWalletConnection, 
+  validateRequiredFields,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES
+} from "@/lib/error-handler";
 
 const MAX_AIRDROP_SOL = 2;
 
@@ -33,36 +41,47 @@ const Airdrop = () => {
   const [targetAddress, setTargetAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   const handleAirdrop = async () => {
-    if (!publicKey) {
-      toast.error("Please connect your wallet");
-      return;
-    }
-
-    const solAmount = parseFloat(amount);
-    if (isNaN(solAmount) || solAmount <= 0) {
-      toast.error("Please enter a valid SOL amount");
-      return;
-    }
-
-    if (solAmount > MAX_AIRDROP_SOL) {
-      toast.error(
-        `Airdrop amount exceeds the maximum limit of ${MAX_AIRDROP_SOL} SOL`,
-      );
-      return;
-    }
-
-    let recipient: PublicKey;
     try {
-      recipient = mode === "self" ? publicKey : new PublicKey(targetAddress);
-    } catch {
-      toast.error("Invalid recipient address");
-      return;
-    }
+      // Clear previous validation errors
+      setValidationError("");
+      
+      // Validation
+      validateWalletConnection(publicKey);
+      
+      const requiredFields = {
+        'Amount': amount
+      };
+      validateRequiredFields(requiredFields);
 
-    setIsProcessing(true);
-    try {
+      const solAmount = parseFloat(amount);
+      if (isNaN(solAmount) || solAmount <= 0) {
+        throw new Error("Please enter a valid SOL amount");
+      }
+
+      if (solAmount > MAX_AIRDROP_SOL) {
+        throw new Error(
+          `Airdrop amount exceeds the maximum limit of ${MAX_AIRDROP_SOL} SOL`
+        );
+      }
+
+      // Validate target address if not self
+      let recipient: PublicKey;
+      try {
+        recipient = mode === "self" ? publicKey! : new PublicKey(targetAddress);
+      } catch {
+        throw new Error("Invalid recipient address");
+      }
+
+      if (mode === "other" && !targetAddress) {
+        throw new Error("Please enter a target address");
+      }
+
+      setIsProcessing(true);
+      const toastId = toast.loading("Processing airdrop...");
+      
       const signature = await connection.requestAirdrop(
         recipient,
         solAmount * LAMPORTS_PER_SOL,
@@ -74,18 +93,21 @@ const Airdrop = () => {
         blockhash,
         lastValidBlockHeight,
       });
-      toast.success("Airdrop successful");
+      
+      toast.success("Airdrop completed successfully!", { id: toastId });
       setAmount("");
       setTargetAddress("");
-    } catch (error: unknown) {
-      console.error("Airdrop failed", error);
+      
+    } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes("429")) {
-        toast.error(
-          "🚫 Devnet faucet limit reached or faucet is empty. Try again later or use https://faucet.solana.com",
-        );
+        handleError(new Error("🚫 Devnet faucet limit reached or faucet is empty. Try again later or use https://faucet.solana.com"), { context: "Airdrop failed" });
       } else {
-        toast.error(`Airdrop failed: ${errorMessage}`);
+        handleError(error, { context: "Airdrop failed" });
+      }
+      
+      if (error instanceof Error) {
+        setValidationError(error.message);
       }
     } finally {
       setIsProcessing(false);
@@ -103,6 +125,12 @@ const Airdrop = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {validationError && (
+            <Alert variant="destructive" className="">
+              <AlertDescription className="">{validationError}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="space-y-2">
             <Label className="">Choose Airdrop Target</Label>
             <Select value={mode} onValueChange={(v: string) => setMode(v)}>
