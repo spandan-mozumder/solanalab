@@ -126,7 +126,3 @@ This repository currently has no license file. Add a `LICENSE` if you intend to 
 ## Contact
 
 If you need help running or extending this project, open an issue or contact the maintainer.
-
----
-
-Generated README updated for clarity and developer-friendliness.
