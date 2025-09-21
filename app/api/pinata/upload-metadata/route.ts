@@ -5,15 +5,23 @@ async function POST(request: NextRequest) {
   try {
     const metadata = await request.json();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const jwt = process.env.PINATA_JWT || process.env.NEXT_PUBLIC_PINATA_JWT;
+    const apiKey = process.env.PINATA_API_KEY;
+    const apiSecret = process.env.PINATA_SECRET_API_KEY;
 
-    if (process.env.PINATA_JWT) {
-      headers["Authorization"] = `Bearer ${process.env.PINATA_JWT}`;
-    } else if (
-      process.env.PINATA_API_KEY &&
-      process.env.PINATA_SECRET_API_KEY
-    ) {
-      headers["pinata_api_key"] = process.env.PINATA_API_KEY;
-      headers["pinata_secret_api_key"] = process.env.PINATA_SECRET_API_KEY;
+    if (jwt) {
+      headers["Authorization"] = `Bearer ${jwt}`;
+    } else if (apiKey && apiSecret) {
+      headers["pinata_api_key"] = apiKey;
+      headers["pinata_secret_api_key"] = apiSecret;
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            "Pinata credentials missing. Set PINATA_JWT or PINATA_API_KEY + PINATA_SECRET_API_KEY.",
+        },
+        { status: 500 },
+      );
     }
 
     const body = {
@@ -30,12 +38,12 @@ async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(resp.data);
-  } catch (error) {
-    console.error("Pinata metadata upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload metadata" },
-      { status: 500 },
-    );
+  } catch (error: any) {
+    const status = error?.response?.status || 500;
+    const message =
+      error?.response?.data?.error || error?.response?.data || error?.message || "Failed to upload metadata";
+    console.error("Pinata metadata upload error:", message);
+    return NextResponse.json({ error: message }, { status });
   }
 }
 

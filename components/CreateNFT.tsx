@@ -21,10 +21,10 @@ import {
   createCreateMetadataAccountV3Instruction,
   PROGRAM_ID as METADATA_PROGRAM_ID,
 } from "@metaplex-foundation/mpl-token-metadata";
-import { FC, useCallback, useState } from "react";
+import { FC, useCallback, useMemo, useState } from "react";
+import type React from "react";
 import { toast } from "react-hot-toast";
 import { ClipLoader } from "react-spinners";
-import { PinataSDK } from "pinata-web3";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,18 +60,23 @@ export const CreateNFT: FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [nftMintAddress, setNftMintAddress] = useState("");
 
-  const SERVICE_FEE_LAMPORTS = 0.3 * LAMPORTS_PER_SOL; 
-  const serviceWallet = new PublicKey("11111111111111111111111111111112"); 
+  const serviceWalletStr = process.env.NEXT_PUBLIC_SERVICE_WALLET || "";
+  const serviceFeeSol = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_SOL || 0);
+  const serviceWallet = useMemo(() => {
+    try {
+      return serviceWalletStr ? new PublicKey(serviceWalletStr) : null;
+    } catch {
+      return null;
+    }
+  }, [serviceWalletStr]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      
       if (!file.type.startsWith("image/")) {
         toast.error("Please select a valid image file");
         return;
       }
-      
       if (file.size > 10 * 1024 * 1024) {
         toast.error("Image file must be less than 10MB");
         return;
@@ -81,23 +86,50 @@ export const CreateNFT: FC = () => {
   };
 
   const addAttribute = () => {
-    setAttributes([...attributes, { trait_type: "", value: "" }]);
+    setAttributes((prev) => [...prev, { trait_type: "", value: "" }]);
   };
 
   const removeAttribute = (index: number) => {
-    if (attributes.length === 1) return;
-    const newAttributes = attributes.filter((_, i) => i !== index);
-    setAttributes(newAttributes);
+    setAttributes((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   };
 
-  const updateAttribute = (
-    index: number,
-    field: keyof NFTAttribute,
-    value: string
-  ) => {
-    const newAttributes = [...attributes];
-    newAttributes[index][field] = value;
-    setAttributes(newAttributes);
+  const updateAttribute = (index: number, field: keyof NFTAttribute, value: string) => {
+    setAttributes((prev) => {
+      const next = [...prev];
+      next[index][field] = value;
+      return next;
+    });
+  };
+
+  const getClusterParam = () => {
+    const ep = connection.rpcEndpoint.toLowerCase();
+    if (ep.includes("devnet")) return "devnet";
+    if (ep.includes("testnet")) return "testnet";
+    return "mainnet";
+  };
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/pinata/upload-image", { method: "POST", body: fd });
+    if (!res.ok) throw new Error("Failed to upload image to IPFS");
+    const data = await res.json();
+    const hash = data.IpfsHash || data.ipfsHash || data.Hash;
+    if (!hash) throw new Error("Missing IPFS hash for image");
+    return `https://gateway.pinata.cloud/ipfs/${hash}`;
+  };
+
+  const uploadMetadata = async (metadata: Record<string, unknown>): Promise<string> => {
+    const res = await fetch("/api/pinata/upload-metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+    if (!res.ok) throw new Error("Failed to upload metadata to IPFS");
+    const data = await res.json();
+    const hash = data.IpfsHash || data.ipfsHash || data.Hash;
+    if (!hash) throw new Error("Missing IPFS hash for metadata");
+    return `https://gateway.pinata.cloud/ipfs/${hash}`;
   };
 
   const createNFT = useCallback(async () => {
@@ -105,52 +137,29 @@ export const CreateNFT: FC = () => {
       toast.error("Wallet not connected!");
       return;
     }
-    if (!imageFile || !nftName) {
+    if (!imageFile || !nftName.trim()) {
       toast.error("Please provide an image and NFT name.");
       return;
     }
 
     setIsLoading(true);
-    const toastId = toast.loading("Uploading metadata to IPFS...");
+    const toastId = toast.loading("Uploading image to IPFS...");
 
-    let metadataUri = "";
     try {
-      
-      const pinataJwt = process.env.NEXT_PUBLIC_PINATA_JWT;
-      if (!pinataJwt || pinataJwt === 'your_pinata_jwt_token_here') {
-        toast.error(
-          "Pinata IPFS is not configured. Please add NEXT_PUBLIC_PINATA_JWT to your .env.local file.",
-          { id: toastId }
-        );
-        setIsLoading(false);
-        return;
-      }
+      const imageUri = await uploadImage(imageFile);
 
-      const pinata = new PinataSDK({
-        pinataJwt: pinataJwt,
-      });
-
-      
-      const imageUploadResponse = await pinata.upload.file(imageFile);
-      const ipfsImageUri = `https://
-
-      
-      const validAttributes = attributes.filter(
-        (attr) => attr.trait_type.trim() && attr.value.trim()
-      );
-
-      
-      const nftMetadata = {
+      const validAttributes = attributes.filter((a) => a.trait_type.trim() && a.value.trim());
+      const metadataJson = {
         name: nftName,
-        description: nftDescription,
-        image: ipfsImageUri,
+        description: nftDescription || undefined,
+        image: imageUri,
         external_url: externalUrl || undefined,
-        attributes: validAttributes.length > 0 ? validAttributes : undefined,
+        attributes: validAttributes.length ? validAttributes : undefined,
         properties: {
           files: [
             {
-              uri: ipfsImageUri,
-              type: imageFile.type,
+              uri: imageUri,
+              type: imageFile.type || "image/png",
             },
           ],
           category: "image",
@@ -161,43 +170,40 @@ export const CreateNFT: FC = () => {
             },
           ],
         },
-        seller_fee_basis_points: royaltyPercentage * 100, 
+        seller_fee_basis_points: Math.max(0, Math.min(1000, Math.round(royaltyPercentage * 100))),
       };
 
-      const jsonBlob = new Blob([JSON.stringify(nftMetadata)], {
-        type: "application/json",
-      });
+      toast.loading("Uploading metadata to IPFS...", { id: toastId });
+      const metadataUri = await uploadMetadata(metadataJson);
 
-      const jsonFile = new File([jsonBlob], "metadata.json");
-      const jsonUploadResponse = await pinata.upload.file(jsonFile);
-      metadataUri = `https://
-
-      toast.success("Metadata uploaded!", { id: toastId });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Metadata upload failed: ${errorMessage}`, { id: toastId });
-      setIsLoading(false);
-      return;
-    }
-
-    try {
       toast.loading("Creating NFT on Solana...", { id: toastId });
+
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
 
-      const associatedTokenAccount = await getAssociatedTokenAddress(
-        mintKeypair.publicKey,
-        publicKey
-      );
+      const ata = await getAssociatedTokenAddress(mintKeypair.publicKey, publicKey);
 
-      const tx = new Transaction().add(
-        
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: serviceWallet,
-          lamports: SERVICE_FEE_LAMPORTS,
-        }),
+      const ix: any[] = [];
+      if (serviceWallet && serviceFeeSol > 0) {
+        ix.push(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: serviceWallet,
+            lamports: Math.floor(serviceFeeSol * LAMPORTS_PER_SOL),
+          }),
+        );
+      }
+
+      const metadataPda = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          METADATA_PROGRAM_ID.toBuffer(),
+          mintKeypair.publicKey.toBuffer(),
+        ],
+        METADATA_PROGRAM_ID,
+      )[0];
+
+      ix.push(
         SystemProgram.createAccount({
           fromPubkey: publicKey,
           newAccountPubkey: mintKeypair.publicKey,
@@ -205,23 +211,10 @@ export const CreateNFT: FC = () => {
           lamports,
           programId: TOKEN_PROGRAM_ID,
         }),
-        createInitializeMintInstruction(
-          mintKeypair.publicKey,
-          0, 
-          publicKey,
-          publicKey,
-          TOKEN_PROGRAM_ID
-        ),
+        createInitializeMintInstruction(mintKeypair.publicKey, 0, publicKey, publicKey),
         createCreateMetadataAccountV3Instruction(
           {
-            metadata: PublicKey.findProgramAddressSync(
-              [
-                Buffer.from("metadata"),
-                METADATA_PROGRAM_ID.toBuffer(),
-                mintKeypair.publicKey.toBuffer(),
-              ],
-              METADATA_PROGRAM_ID
-            )[0],
+            metadata: metadataPda,
             mint: mintKeypair.publicKey,
             mintAuthority: publicKey,
             payer: publicKey,
@@ -240,52 +233,46 @@ export const CreateNFT: FC = () => {
                     share: 100,
                   },
                 ],
-                sellerFeeBasisPoints: royaltyPercentage * 100,
+                sellerFeeBasisPoints: Math.max(
+                  0,
+                  Math.min(1000, Math.round(royaltyPercentage * 100)),
+                ),
                 collection: null,
                 uses: null,
               },
-              isMutable: true, 
+              isMutable: true,
               collectionDetails: null,
             },
-          }
+          },
         ),
-        createAssociatedTokenAccountInstruction(
-          publicKey,
-          associatedTokenAccount,
-          publicKey,
-          mintKeypair.publicKey
-        ),
-        createMintToInstruction(
-          mintKeypair.publicKey,
-          associatedTokenAccount,
-          publicKey,
-          1 
-        )
+        createAssociatedTokenAccountInstruction(publicKey, ata, publicKey, mintKeypair.publicKey),
+        createMintToInstruction(mintKeypair.publicKey, ata, publicKey, 1),
       );
 
-      const signature = await sendTransaction(tx, connection, {
-        signers: [mintKeypair],
-      });
+      const tx = new Transaction().add(...ix);
+      const signature = await sendTransaction(tx, connection, { signers: [mintKeypair] });
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("lastTxSig", signature);
+          window.dispatchEvent(new Event("last-tx-updated"));
+        }
+      } catch {}
 
-      const explorerUrl = `https://
-
+      const cluster = getClusterParam();
+      const url = `https://explorer.solana.com/tx/${signature}?cluster=${cluster}`;
       toast.success(
-        <a
-          href={explorerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
-        >
-          NFT created successfully! View on Explorer
-        </a>,
-        { id: toastId, duration: 8000 }
+        (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+            NFT created successfully! View on Explorer
+          </a>
+        ),
+        { id: toastId, duration: 8000 },
       );
 
-      setNftMintAddress(mintKeypair.publicKey.toString());
+  setNftMintAddress(mintKeypair.publicKey.toString());
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      toast.error(`NFT creation failed: ${errorMessage}`, { id: toastId });
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to create NFT: ${msg}`, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -299,6 +286,8 @@ export const CreateNFT: FC = () => {
     attributes,
     externalUrl,
     royaltyPercentage,
+    serviceWallet,
+    serviceFeeSol,
   ]);
 
   return (
@@ -315,64 +304,49 @@ export const CreateNFT: FC = () => {
             <CardTitle className="">Create NFT</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert
-              variant="default"
-              className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20"
-            >
-              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-                <strong>Service Fee:</strong> 0.3 SOL will be charged for
-                creating this NFT to cover platform costs.
-              </AlertDescription>
-            </Alert>
+            {serviceWallet && serviceFeeSol > 0 ? (
+              <Alert
+                variant="default"
+                className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20"
+              >
+                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                  <strong>Service Fee:</strong> {serviceFeeSol} SOL will be charged to cover
+                  platform costs.
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nftName" className="">
-                  NFT Name*
-                </Label>
+                <Label htmlFor="nftName" className="">NFT Name*</Label>
                 <Input
                   id="nftName"
                   type="text"
-                  className=""
                   placeholder="My Awesome NFT"
                   value={nftName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setNftName(e.target.value)
-                  }
+                  className=""
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNftName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="nftDescription" className="">
-                  Description
-                </Label>
+                <Label htmlFor="nftDescription" className="">Description</Label>
                 <Textarea
                   id="nftDescription"
-                  className=""
                   placeholder="Describe your NFT..."
                   value={nftDescription}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setNftDescription(e.target.value)
-                  }
+                  className=""
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNftDescription(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="imageFile" className="">
-                  Image* (Max 10MB)
-                </Label>
-                <Input
-                  id="imageFile"
-                  type="file"
-                  className=""
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
+                <Label htmlFor="imageFile" className="">Image* (Max 10MB)</Label>
+                <Input id="imageFile" type="file" accept="image/*" className="" onChange={handleImageChange} />
                 {imageFile && (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      {imageFile.name} (
-                      {(imageFile.size / 1024 / 1024).toFixed(2)} MB)
+                      {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
                     </p>
                     <img
                       src={URL.createObjectURL(imageFile)}
@@ -384,151 +358,97 @@ export const CreateNFT: FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="externalUrl" className="">
-                  External URL (Optional)
-                </Label>
+                <Label htmlFor="externalUrl" className="">External URL (Optional)</Label>
                 <Input
                   id="externalUrl"
                   type="url"
-                  className=""
-                  placeholder="https://
+                  placeholder="https://your-site.xyz/item/123"
                   value={externalUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setExternalUrl(e.target.value)
-                  }
+                  className=""
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExternalUrl(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="royaltyPercentage" className="">
-                  Royalty Percentage (0-10%)
-                </Label>
+                <Label htmlFor="royaltyPercentage" className="">Royalty Percentage (0-10%)</Label>
                 <Input
                   id="royaltyPercentage"
                   type="number"
-                  className=""
                   min={0}
                   max={10}
                   step={0.1}
                   value={royaltyPercentage}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setRoyaltyPercentage(Number(e.target.value))
-                  }
+                  className=""
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRoyaltyPercentage(Number(e.target.value))}
                 />
               </div>
 
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Attributes</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addAttribute}
-                    className=""
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Attribute
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {attributes.map((attribute, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-2 gap-2 items-end"
-                    >
-                      <div className="space-y-1">
-                        <Label className="text-sm">Trait Type</Label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., Color"
-                          className=""
-                          value={attribute.trait_type}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            updateAttribute(index, "trait_type", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm">Value</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="text"
-                            placeholder="e.g., Blue"
-                            className=""
-                            value={attribute.value}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLInputElement>
-                            ) => updateAttribute(index, "value", e.target.value)}
-                          />
-                          {attributes.length > 1 && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeAttribute(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+              <div className="space-y-2">
+                <Label className="">Attributes (Optional)</Label>
+                <div className="space-y-2">
+                  {attributes.map((attr, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Trait type (e.g., Background)"
+                        value={attr.trait_type}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAttribute(index, "trait_type", e.target.value)}
+                        className="md:col-span-2"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="Value (e.g., Blue)"
+                        value={attr.value}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateAttribute(index, "value", e.target.value)}
+                        className="md:col-span-2"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => removeAttribute(index)}
+                        disabled={attributes.length === 1}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Remove
+                      </Button>
                     </div>
                   ))}
+                  <Button type="button" variant="ghost" onClick={addAttribute}>
+                    <Plus className="h-4 w-4 mr-2" /> Add attribute
+                  </Button>
                 </div>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="">
-            <Button
-              onClick={createNFT}
-              disabled={!publicKey || isLoading}
-              variant="default"
-              size="default"
-              className="w-full"
-            >
-              {isLoading
-                ? "Creating..."
-                : publicKey
-                ? "Create NFT"
-                : "Connect Wallet"}
+          <CardFooter className="flex justify-end gap-2">
+            <Button onClick={createNFT} disabled={!publicKey || isLoading || !nftName || !imageFile}>
+              Create NFT
             </Button>
           </CardFooter>
         </Card>
       ) : (
         <Card className="">
           <CardHeader className="">
-            <CardTitle className="">NFT Created Successfully!</CardTitle>
+            <CardTitle className="">NFT Created</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="">NFT Mint Address</Label>
-              <div className="break-all font-mono text-sm p-2 bg-muted rounded">
-                {nftMintAddress}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="">Explorer Link</Label>
-              <a
-                className="text-primary hover:underline text-sm"
-                href={`https://
-                target="_blank"
-                rel="noreferrer"
-              >
-                View on Solana Explorer
-              </a>
-            </div>
+          <CardContent className="space-y-2">
+            <p className="text-sm">Mint Address:</p>
+            <p className="font-mono break-all text-sm">{nftMintAddress}</p>
+            <a
+              href={`https://explorer.solana.com/address/${nftMintAddress}?cluster=${getClusterParam()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-primary"
+            >
+              View Mint on Explorer
+            </a>
           </CardContent>
           <CardFooter className="">
-            <Button
-              onClick={() => setNftMintAddress("")}
-              variant="outline"
-              size="default"
-              className="w-full"
-            >
-              Create Another NFT
-            </Button>
+            <Button variant="outline" onClick={() => setNftMintAddress("")}>Create another</Button>
           </CardFooter>
         </Card>
       )}
     </div>
   );
 };
+
+export default CreateNFT;
